@@ -115,23 +115,3 @@ def add_indicators_to_df(df, timeperiod=60):
     # # Add rolling mean of some indicators
     df['RSI_MA_14'] = df['RSI'].rolling(window=14).mean()
     df['MACD_MA_14'] = df['MACD'].rolling(window=14).mean()
-
-
-if __name__ == '__main__':
-    print("Starting training script.\n")
-
-    for symbol in ["SOL"]:
-        # for symbol in ["XRP", "SOL", "PEPE", "BTC", "ETH", "BNB", "DOGE", "ARB"]:
-        for timeperiod in [
-            # 1,
-            # 5,
-            15,
-            # 30
-        ]:
-            print(f"Starting training for symbol:{symbol} and interval: {timeperiod}min.\n")
-            df = load_data(symbol=symbol, timeperiod=timeperiod)
-
-            add_indicators_to_df(df, timeperiod)
-            df.dropna(inplace=True)
-
-            print(df.head(1))

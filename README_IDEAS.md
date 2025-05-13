@@ -1,0 +1,5 @@
+- Can I use algo strategies knowledge to improve the model somehow?
+  - Like using T3 and other indicators?
+  - ???
+- Can I check what indicators is actually useful/used like with SHARP?
+- 
