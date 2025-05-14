@@ -184,4 +184,6 @@ cached_question_*
 */models*/
 /.elasticbeanstalk/
 
-/lda_topics_visualisations/
+/tensorboard_logs/
+
+*.png

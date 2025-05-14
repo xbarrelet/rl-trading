@@ -1,14 +1,51 @@
-import os
 import argparse
-import numpy as np
+import os
+
+import matplotlib.pyplot as plt
 import pandas as pd
 from stable_baselines3 import PPO
-import matplotlib.pyplot as plt
 
-# Import your modules
-from trading_env import TradingEnvironment
-from training_agent import train_trading_agent, evaluate_trading_agent, plot_trading_results
 from test_env import test_environment
+from training_agent import train_enhanced_trading_agent, adaptive_evaluate_trading_agent
+
+
+def plot_trading_results(results, symbol):
+    """Plot trading results including portfolio value and actions"""
+    if not isinstance(results, pd.DataFrame) or results.empty:
+        print("No results to plot")
+        return
+
+    # Create directory for plots
+    os.makedirs('plots', exist_ok=True)
+
+    # Plot portfolio value over time
+    plt.figure(figsize=(14, 7))
+    plt.subplot(2, 1, 1)
+    plt.plot(results['portfolio_value'], label='Portfolio Value')
+    plt.title(f'Trading Results for {symbol}')
+    plt.ylabel('Portfolio Value ($)')
+    plt.grid(True)
+    plt.legend()
+
+    # Plot price and buy/sell actions
+    plt.subplot(2, 1, 2)
+    plt.plot(results['price'], label='Price', color='blue', alpha=0.6)
+
+    # Plot buy and sell points
+    for i, row in results.iterrows():
+        if 'BUY' in row['action']:
+            plt.scatter(i, row['price'], color='green', marker='^', alpha=0.7)
+        elif 'SELL' in row['action']:
+            plt.scatter(i, row['price'], color='red', marker='v', alpha=0.7)
+
+    plt.xlabel('Time Steps')
+    plt.ylabel('Price')
+    plt.grid(True)
+    plt.legend()
+
+    plt.tight_layout()
+    plt.savefig(f'plots/{symbol}_trading_results.png')
+    plt.close()
 
 
 def main():
@@ -22,21 +59,28 @@ def main():
                         help='Path to saved model for evaluation')
     parser.add_argument('--timesteps', type=int, default=200000, help='Total timesteps for training')
     parser.add_argument('--initial_balance', type=float, default=100000, help='Initial balance for trading')
-    parser.add_argument('--position_size', type=float, default=0.03, help='Max position size as percentage of balance')
-    parser.add_argument('--stop_loss', type=float, default=0.05, help='Stop loss percentage')
-    parser.add_argument('--take_profit', type=float, default=0.1, help='Take profit percentage')
+    parser.add_argument('--base_position_size', type=float, default=0.02,
+                        help='Base position size as percentage of balance')
+    parser.add_argument('--max_position_size', type=float, default=0.03,
+                        help='Maximum position size as percentage of balance')
+    parser.add_argument('--dynamic_stop_loss', action='store_true', default=True,
+                        help='Use dynamic stop loss based on market conditions')
+    parser.add_argument('--transaction_fee', type=float, default=0.06,
+                        help='Transaction fee as percentage')
+    parser.add_argument('--reward_scaling', type=float, default=1.0,
+                        help='Reward scaling factor')
+    parser.add_argument('--lookback_window', type=int, default=20,
+                        help='Lookback window for observations')
     parser.add_argument('--render', action='store_true', help='Render trading actions')
 
     args = parser.parse_args()
 
-    # Import your data loading functions
-    from data_preparation import load_data, add_indicators_to_df
+    # Import data preparation functions
+    from data_preparation import load_data
 
     # Load and prepare data
     print(f"Loading data for {args.symbol} at {args.timeperiod}min interval...")
     df = load_data(symbol=args.symbol, timeperiod=args.timeperiod)
-    add_indicators_to_df(df, args.timeperiod)
-    df.dropna(inplace=True)
 
     if args.mode == 'train':
         # Split data for training, validation, and testing
@@ -51,23 +95,31 @@ def main():
         print(f"Evaluation data: {len(eval_df)} samples")
         print(f"Testing data: {len(test_df)} samples")
 
-        # Create environment with specified parameters
-        train_env = lambda: TradingEnvironment(
+        # Train the agent with updated parameters
+        print("Training agent...")
+        model = train_enhanced_trading_agent(
             train_df,
+            eval_df,
+            total_timesteps=args.timesteps,
             initial_balance=args.initial_balance,
-            position_size_percent=args.position_size,
-            stop_loss_percent=args.stop_loss,
-            take_profit_percent=args.take_profit,
-            reward_scaling=1.0
+            transaction_fee_percent=args.transaction_fee,
+            base_position_size_percent=args.base_position_size,
+            max_position_size_percent=args.max_position_size,
+            dynamic_stop_loss=args.dynamic_stop_loss,
+            reward_scaling=args.reward_scaling,
+            lookback_window=args.lookback_window
         )
 
-        # Train the agent
-        print("Training agent...")
-        model = train_trading_agent(train_df, eval_df, total_timesteps=args.timesteps)
-
-        # Evaluate the agent on test data
+        # Evaluate the trained agent on test data
         print("Evaluating agent on test data...")
-        results = evaluate_trading_agent(model, test_df, render=args.render)
+        results = adaptive_evaluate_trading_agent(
+            model,
+            test_df,
+            render=args.render,
+            initial_balance=args.initial_balance,
+            transaction_fee_percent=args.transaction_fee,
+            dynamic_stop_loss=args.dynamic_stop_loss
+        )
 
         # Plot results
         print("Plotting results...")
@@ -90,9 +142,16 @@ def main():
         test_size = int(len(df) * 0.2)
         test_df = df.iloc[-test_size:].reset_index(drop=True)
 
-        # Evaluate the agent
+        # Evaluate the agent with updated parameters
         print(f"Evaluating agent on {len(test_df)} data points...")
-        results = evaluate_trading_agent(model, test_df, render=args.render)
+        results = adaptive_evaluate_trading_agent(
+            model,
+            test_df,
+            render=args.render,
+            initial_balance=args.initial_balance,
+            transaction_fee_percent=args.transaction_fee,
+            dynamic_stop_loss=args.dynamic_stop_loss
+        )
 
         # Plot results
         print("Plotting results...")

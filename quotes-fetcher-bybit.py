@@ -27,7 +27,7 @@ def get_latest_quote_timestamp(symbol, interval) -> float:
 
 
 if __name__ == '__main__':
-    interval = 15
+    interval = 30
     symbol = "SOL"
 
     session = HTTP(testnet=False)
