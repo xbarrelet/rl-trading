@@ -94,6 +94,8 @@ def add_indicators_to_df(df, timeperiod=60):
         multiplier = 12
     elif timeperiod == 1:
         multiplier = 60
+    else:
+        multiplier = 1
 
     # Trend Indicators
     df['SMA_10'] = talib.SMA(close, timeperiod=10 * multiplier)

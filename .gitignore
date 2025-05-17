@@ -187,3 +187,5 @@ cached_question_*
 /tensorboard_logs/
 
 *.png
+optuna_studies/
+logs/
